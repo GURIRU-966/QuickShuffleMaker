@@ -1,51 +1,79 @@
 # QuickShuffleMaker
 
-簡単に複数アーティストの楽曲をまとめてプレイリスト作成するためのスクリプトです。
+複数アーティストの楽曲をまとめてSpotifyプレイリストを作成する簡易スクリプトです。
 
-**使い方（概要）**
-- **Prerequisites**: Python 3.x と `pip` が必要です。
-- 依存パッケージは `requirements.txt` に記載しています。
-- 使用するにはSpotify for Developersの登録が必要です(突っかかりがちなリダイレクトURLは"http://127.0.0.1:8888/callback"でいけます)
+**要点**
+- Python 3.x と `pip` が必要です。
+- 依存は `requirements.txt`（`spotipy`, `python-dotenv`）に記載しています。
+- Spotify API（開発者アカウント）で `CLIENT_ID`/`CLIENT_SECRET` を取得してください。
 
-**セットアップ**
-- 依存関係をインストール:
+**セットアップ（推奨）**
+- 仮想環境を作る場合:
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install --upgrade pip
 python3 -m pip install -r requirements.txt
 ```
 
-- プロジェクトルートに `.env` を作り、Spotify の認証情報を設定してください（以下参照）。
+- もしくは（仮想環境不要）:
 
-**`.env` に書く内容（例）**
+```bash
+python3 -m pip install --upgrade pip
+python3 -m pip install -r requirements.txt
+```
+
+- プロジェクトルートに `.env` を作り、Spotify認証情報を設定します:
+
 ```ini
 SPOTIPY_CLIENT_ID=your_client_id_here
 SPOTIPY_CLIENT_SECRET=your_client_secret_here
-SPOTIPY_REDIRECT_URI=your_redirect_uris_here
+SPOTIPY_REDIRECT_URI=http://127.0.0.1:8888/callback
 ```
 
-- 各要素はSpotify for Developersで設定、指定されたものを使用してください。
+**アーティスト指定方法**
+1) ファイル指定（推奲）: `artists.txt` のようなテキストファイルに1行1アーティストを書き、`--artists-file` で渡します。
 
-**実行方法**
-- アーティスト名は現状 `QuickShuffleMaker.py` 内の `artist_names` リストを直接編集して指定します。
+  - ファイル内でプレイリスト名を指定することもできます:
+    - `playlist: プレイリスト名` または `# playlist: プレイリスト名`
+    - 例:
+
+```text
+playlist: マイまとめプレイリスト
+Yoasobi
+Eve
+RADWIMPS
+# コメント行は無視されます
+```
+
+2) CLIで直接: `--artists "Artist1,Artist2"`（カンマ区切り）
+
+**プレイリスト名の優先順位**
+- `--playlist-name`（コマンドライン） > `playlist:`（ファイル内） > デフォルト `まとめプレイリスト`
+
+**実行例**
 
 ```bash
-python3 QuickShuffleMaker.py
+# ファイル指定で実行（ファイル内の playlist: を使用）
+python3 QuickShuffleMaker.py --artists-file artists.txt
+
+# CLIで上書きして実行
+python3 QuickShuffleMaker.py --artists-file artists.txt --playlist-name "週刊プレイリスト"
+
+# 直接CLIで複数アーティストを渡す
+python3 QuickShuffleMaker.py --artists "Yoasobi,Eve"
 ```
 
-実行すると、指定したアーティストの曲をまとめたプレイリストが作成され、Spotify のプレイリスト URL が表示されます。
+実行するとブラウザでSpotifyの認可フローが開き、承認後にプレイリストが作成されます。成功するとプレイリストのURLが表示されます。
 
-**セキュリティ**
-- 秘密情報は `.env` に入れておき、`.gitignore` で無視するようにしています。万が一 `CLIENT_SECRET` 等を公開してしまった場合は、Spotify のダッシュボードでシークレットを再生成してください。
+**注意 / セキュリティ**
+- `.env` にクライアントシークレットを保存する場合は `.gitignore` に追加してください。
+- シークレットを誤って公開した場合はSpotifyダッシュボードで再生成してください。
 
-**今後の予定（短め）**
-- 現在は `artist_names` を手動編集する方式ですが、より使いやすくするために以下の改善を予定しています:
-	- コマンドライン引数や対話式プロンプトでアーティストを指定できるようにする
-	- GUI または簡易 Web UI を検討
-	- アーティスト重複や同一曲の重複排除などの改善
+**今後の改善案**
+- 同名プレイリストの検出と追記/新規作成オプション
+- `artists.json` によるメタ情報対応（追加の曲フィルタ等）
+- 対話式入力UIや簡易Web UIの追加
 
 貢献や要望があれば Issue を立ててください。
-
----
-小さなメモ: `.gitignore` に `.env` とキャッシュが追加されていることを確認してください（今の設定で追加済みです）。
-
-超バイブコーディングを感じる

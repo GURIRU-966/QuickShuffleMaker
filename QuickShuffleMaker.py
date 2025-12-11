@@ -1,4 +1,5 @@
 import os
+import argparse
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
@@ -66,14 +67,90 @@ def create_playlist_with_tracks(name, track_ids):
 # -------------------------
 # メイン処理
 # -------------------------
-artist_names = ["Yoasobi", "Eve"]  # ←ここに複数アーティスト名
+def read_artists_file(path):
+    """Read artists from a text file.
 
-track_ids = []
-for name in artist_names:
-    aid = get_artist_id(name)
-    if aid:
-        track_ids.extend(get_all_tracks(aid))
+    Supports an optional directive to set the playlist name. The file format:
+      - Blank lines ignored
+      - Comment lines start with `#` and are ignored, except `# playlist: NAME`
+      - A line `playlist: NAME` (or `# playlist: NAME`) sets the playlist name
+      - Other non-empty lines are treated as artist names (one per line)
+
+    Returns tuple: (artist_names_list, playlist_name_or_None)
+    """
+    names = []
+    playlist_name = None
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                raw = line.strip()
+                if not raw:
+                    continue
+
+                # Handle commented directive like: # playlist: My Playlist
+                if raw.startswith('#'):
+                    directive = raw.lstrip('#').strip()
+                    if directive.lower().startswith('playlist:'):
+                        playlist_name = directive.split(':', 1)[1].strip()
+                    # other comment - ignore
+                    continue
+
+                # Handle inline directive: playlist: My Playlist
+                if raw.lower().startswith('playlist:'):
+                    playlist_name = raw.split(':', 1)[1].strip()
+                    continue
+
+                # Normal artist line
+                names.append(raw)
+    except FileNotFoundError:
+        print(f"アーティストファイルが見つかりません: {path}")
+    return names, playlist_name
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Create a Spotify playlist from multiple artists")
+    parser.add_argument('--artists-file', '-f', help='Path to a text file containing artist names (one per line)')
+    parser.add_argument('--artists', '-a', help='Comma-separated artist names')
+    parser.add_argument('--playlist-name', '-p', default=None, help='Name for the created playlist (overrides file)')
+
+    args = parser.parse_args()
+
+
+    # Determine artist names and optional playlist name from file
+    artist_names = []
+    file_playlist_name = None
+    if args.artists_file:
+        artist_names, file_playlist_name = read_artists_file(args.artists_file)
+    elif args.artists:
+        artist_names = [s.strip() for s in args.artists.split(',') if s.strip()]
     else:
-        print(f"アーティストが見つかりません: {name}")
+        artist_names = ["Yoasobi", "Eve"]  # デフォルト
 
-create_playlist_with_tracks("まとめプレイリスト", track_ids)
+    if not artist_names:
+        print('対象のアーティストが指定されていません。`--artists-file` または `--artists` を使用してください。')
+        return
+
+    # Playlist name precedence: CLI option > file directive > default
+    playlist_name = args.playlist_name if args.playlist_name else (file_playlist_name if file_playlist_name else 'まとめプレイリスト')
+
+    track_ids = []
+    for name in artist_names:
+        aid = get_artist_id(name)
+        if aid:
+            track_ids.extend(get_all_tracks(aid))
+        else:
+            print(f"アーティストが見つかりません: {name}")
+
+    # 重複を排除（順序を保つ）
+    seen = set()
+    unique_tracks = []
+    for t in track_ids:
+        if t not in seen:
+            seen.add(t)
+            unique_tracks.append(t)
+
+    create_playlist_with_tracks(playlist_name, unique_tracks)
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,8 @@
+# artists.txt - 1行に1アーティスト（コメント行は # で始める）
+# プレイリスト名をこのファイルで指定するには、先頭に `playlist: 名前` を書くか
+# コメント形式で `# playlist: 名前` と書いてください。
+# 例: # playlist: マイまとめプレイリスト
+playlist: テスト
+Yoasobi
+Eve
+RADWIMPS
