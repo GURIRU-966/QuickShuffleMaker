@@ -77,3 +77,5 @@ python3 QuickShuffleMaker.py --artists "Yoasobi,Eve"
 - 対話式入力UIや簡易Web UIの追加
 
 貢献や要望があれば Issue を立ててください。
+
+超バイブコーディングを感じる
