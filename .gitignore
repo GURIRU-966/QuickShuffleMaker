@@ -1,4 +1,14 @@
-.env
+# Ignore everything
+/*
+
+# Allow .gitignore itself and these root files
+!/.gitignore
+!/QuickShuffleMaker.py
+!/README.md
+!/example.txt
+!/requirements.txt
+
+# Note: This keeps only the listed files tracked at repository root..env
 .cache*
 __pycache__/
 *.pyc

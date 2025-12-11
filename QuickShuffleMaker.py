@@ -2,6 +2,9 @@ import os
 import argparse
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
+import threading
+import functools
+import time
 
 # Load environment variables from a .env file if python-dotenv is available
 try:
@@ -29,9 +32,55 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
     scope=scope
 ))
 
+
+def with_progress(message_template=None, interval=0.6):
+    """Decorator: show lightweight progress messages while a function runs.
+
+    - `message_template` may be a format string where positional args from the
+      wrapped function are substituted (e.g. "作業中: {}") . If omitted, the
+      function name is used.
+    - `interval` controls how often the spinner updates (seconds).
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            # Prepare message
+            try:
+                if message_template:
+                    msg = message_template.format(*args, **kwargs)
+                else:
+                    msg = f"{func.__name__} 実行中"
+            except Exception:
+                msg = f"{func.__name__} 実行中"
+
+            stop_event = threading.Event()
+
+            def spinner():
+                chars = "|/-\\"
+                i = 0
+                while not stop_event.is_set():
+                    print(f"{msg} {chars[i % len(chars)]}", end='\r', flush=True)
+                    i += 1
+                    stop_event.wait(interval)
+                # clear line
+                print(' ' * 80, end='\r', flush=True)
+
+            th = threading.Thread(target=spinner, daemon=True)
+            th.start()
+            try:
+                return func(*args, **kwargs)
+            finally:
+                stop_event.set()
+                th.join()
+                print(f"{msg} 完了")
+
+        return wrapper
+    return decorator
+
 # -------------------------
 # アーティスト検索 → ID取得
 # -------------------------
+@with_progress("アーティスト検索中: {}", interval=0.4)
 def get_artist_id(name):
     result = sp.search(q=name, type="artist", limit=1)
     if result["artists"]["items"]:
@@ -41,10 +90,11 @@ def get_artist_id(name):
 # -------------------------
 # アーティストの全曲を取得
 # -------------------------
+@with_progress("曲取得中 (アーティストID: {})", interval=0.6)
 def get_all_tracks(artist_id):
     tracks = []
     albums = sp.artist_albums(artist_id, album_type="album,single", limit=50)
-    
+
     for album in albums['items']:
         album_tracks = sp.album_tracks(album['id'])
         for t in album_tracks['items']:
@@ -54,14 +104,15 @@ def get_all_tracks(artist_id):
 # -------------------------
 # プレイリストに全曲を追加
 # -------------------------
+@with_progress("プレイリストに追加中: {}", interval=0.6)
 def create_playlist_with_tracks(name, track_ids):
     user_id = sp.current_user()["id"]
     playlist = sp.user_playlist_create(user_id, name)
-    
+
     # Spotifyは100曲ずつしか追加できないので分割
     for i in range(0, len(track_ids), 100):
         sp.playlist_add_items(playlist["id"], track_ids[i:i+100])
-    
+
     print("プレイリスト作成完了！ →", playlist["external_urls"]["spotify"])
 
 # -------------------------
@@ -107,6 +158,55 @@ def read_artists_file(path):
     return names, playlist_name
 
 
+def parse_artist_token(token):
+    """Parse an artist token which may be:
+
+    - a plain artist name (e.g. "Eve")
+    - a Spotify artist ID (22 chars, alphanumeric)
+    - a Spotify URI (e.g. "spotify:artist:ID")
+    - a Spotify artist URL (e.g. "https://open.spotify.com/artist/ID")
+    - an explicit directive like "id:ID" or "artist_id:ID"
+
+    Returns a tuple (is_id, value) where `is_id` is True when `value`
+    is already a Spotify artist ID; otherwise `value` is treated as a
+    search name.
+    """
+    t = token.strip()
+    if not t:
+        return False, t
+
+    low = t.lower()
+
+    # explicit prefix
+    if low.startswith('id:'):
+        return True, t.split(':', 1)[1].strip()
+    if low.startswith('artist_id:'):
+        return True, t.split(':', 1)[1].strip()
+
+    # spotify uri
+    if t.startswith('spotify:'):
+        parts = t.split(':')
+        if len(parts) >= 3 and parts[1] == 'artist':
+            return True, parts[2]
+
+    # spotify url
+    if 'open.spotify.com/artist/' in t:
+        # may include query params
+        try:
+            after = t.split('open.spotify.com/artist/', 1)[1]
+            artist_id = after.split('?')[0].split('/')[0]
+            return True, artist_id
+        except Exception:
+            pass
+
+    # direct-ish ID: spotify IDs are typically 22 chars base62-ish
+    if len(t) >= 20 and len(t) <= 24 and t.isalnum():
+        return True, t
+
+    # otherwise treat as name
+    return False, t
+
+
 def main():
     parser = argparse.ArgumentParser(description="Create a Spotify playlist from multiple artists")
     parser.add_argument('--artists-file', '-f', help='Path to a text file containing artist names (one per line)')
@@ -134,12 +234,17 @@ def main():
     playlist_name = args.playlist_name if args.playlist_name else (file_playlist_name if file_playlist_name else 'まとめプレイリスト')
 
     track_ids = []
-    for name in artist_names:
-        aid = get_artist_id(name)
+    for token in artist_names:
+        is_id, val = parse_artist_token(token)
+        if is_id:
+            aid = val
+        else:
+            aid = get_artist_id(val)
+
         if aid:
             track_ids.extend(get_all_tracks(aid))
         else:
-            print(f"アーティストが見つかりません: {name}")
+            print(f"アーティストが見つかりません: {token}")
 
     # 重複を排除（順序を保つ）
     seen = set()

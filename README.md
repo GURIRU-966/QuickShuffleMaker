@@ -10,6 +10,7 @@
 **セットアップ（推奨）**
 - 仮想環境を作る場合:
 
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
@@ -17,14 +18,14 @@ python3 -m pip install --upgrade pip
 python3 -m pip install -r requirements.txt
 ```
 
-- もしくは（仮想環境不要）:
+仮想環境を使わない場合:
 
 ```bash
 python3 -m pip install --upgrade pip
 python3 -m pip install -r requirements.txt
 ```
 
-- プロジェクトルートに `.env` を作り、Spotify認証情報を設定します:
+ルートに `.env` を作成し、Spotify認証情報を設定します:
 
 ```ini
 SPOTIPY_CLIENT_ID=your_client_id_here
@@ -32,50 +33,65 @@ SPOTIPY_CLIENT_SECRET=your_client_secret_here
 SPOTIPY_REDIRECT_URI=http://127.0.0.1:8888/callback
 ```
 
-**アーティスト指定方法**
-1) ファイル指定（推奲）: `artists.txt` のようなテキストファイルに1行1アーティストを書き、`--artists-file` で渡します。
+**`artists-file` の記法（推奨）**
 
-  - ファイル内でプレイリスト名を指定することもできます:
-    - `playlist: プレイリスト名` または `# playlist: プレイリスト名`
-    - 例:
+- 行単位で1エントリ（空行は無視）
+- コメントは行頭に `#` を付ける
+- プレーンテキストで記述（バッククオートや余分な記号は避ける）
+
+例:
 
 ```text
+# プレイリスト名（任意）
 playlist: マイまとめプレイリスト
-Yoasobi
-Eve
-RADWIMPS
-# コメント行は無視されます
+
+# アーティスト名（Spotify表示名）
+YOASOBI
+
+# SpotifyのアーティストID
+artist_id: 5ydDSP9qSxEOlHWnpbblFB
+
+# Spotify URI
+spotify_uri: spotify:artist:5eOzdoFyAe6ugv5bhf1wQr
+
+# Spotify URL
+spotify_url: https://open.spotify.com/artist/5ofxS8vbpzqmcgfs8LouBQ
+
+# コメントは # で始める
+# この行は無視されます
 ```
 
-2) CLIで直接: `--artists "Artist1,Artist2"`（カンマ区切り）
+- 優先順位: `--playlist-name`（CLI） > `playlist:`（ファイル内） > デフォルト名
 
-**プレイリスト名の優先順位**
-- `--playlist-name`（コマンドライン） > `playlist:`（ファイル内） > デフォルト `まとめプレイリスト`
+**使い方（例）**
 
-**実行例**
+ファイル指定で実行（`example.txt` を使用）:
 
 ```bash
-# ファイル指定で実行（ファイル内の playlist: を使用）
-python3 QuickShuffleMaker.py --artists-file artists.txt
+python3 QuickShuffleMaker.py --artists-file example.txt
+```
 
-# CLIで上書きして実行
-python3 QuickShuffleMaker.py --artists-file artists.txt --playlist-name "週刊プレイリスト"
+CLIでプレイリスト名を上書きして実行:
 
-# 直接CLIで複数アーティストを渡す
-python3 QuickShuffleMaker.py --artists "Yoasobi,Eve"
+```bash
+python3 QuickShuffleMaker.py --artists-file example.txt --playlist-name "週刊プレイリスト"
+```
+
+CLIで直接アーティストを渡す（カンマ区切り）:
+
+```bash
+python3 QuickShuffleMaker.py --artists "YOASOBI,Eve"
 ```
 
 実行するとブラウザでSpotifyの認可フローが開き、承認後にプレイリストが作成されます。成功するとプレイリストのURLが表示されます。
 
-**注意 / セキュリティ**
-- `.env` にクライアントシークレットを保存する場合は `.gitignore` に追加してください。
-- シークレットを誤って公開した場合はSpotifyダッシュボードで再生成してください。
-
-**今後の改善案**
-- 同名プレイリストの検出と追記/新規作成オプション
-- `artists.json` によるメタ情報対応（追加の曲フィルタ等）
-- 対話式入力UIや簡易Web UIの追加
+**注意事項**
+- `.env` にクライアントシークレットを保存する場合は取り扱いに注意してください。公開してしまった場合はSpotifyダッシュボードで再生成してください。
 
 貢献や要望があれば Issue を立ててください。
 
-超バイブコーディングを感じる
+***
+
+更新内容: README を整理し、`artists-file` 記法と実行例を明確化しました。
+
+バイブコーディング

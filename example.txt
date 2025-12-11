@@ -1,0 +1,20 @@
+#プレイリスト名の指定方法
+playlist: マイまとめプレイリスト
+
+
+#アーティストの指定方法
+#名前で指定
+YOASOBI
+
+#id指定
+id:58oPVy7oihAEXE0Ott6JOf
+artist_id:5ydDSP9qSxEOlHWnpbblFB
+
+#URI指定
+Spotify URI:`spotify:artist:5eOzdoFyAe6ugv5bhf1wQr`
+
+#URL指定
+Spotify URL:`https://open.spotify.com/artist/5ofxS8vbpzqmcgfs8LouBQ`
+
+
+# "#"を先頭に置くことによってコメントアウトにできます
