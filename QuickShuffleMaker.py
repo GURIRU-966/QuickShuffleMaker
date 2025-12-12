@@ -5,6 +5,7 @@ from spotipy.oauth2 import SpotifyOAuth
 import threading
 import functools
 import time
+import re
 
 # Load environment variables from a .env file if python-dotenv is available
 try:
@@ -175,36 +176,32 @@ def parse_artist_token(token):
     if not t:
         return False, t
 
-    low = t.lower()
+    # Remove common wrapping characters/backticks while parsing
+    cleaned = t.replace('`', '').strip()
+    low = cleaned.lower()
 
     # explicit prefix
     if low.startswith('id:'):
-        return True, t.split(':', 1)[1].strip()
+        return True, cleaned.split(':', 1)[1].strip()
     if low.startswith('artist_id:'):
-        return True, t.split(':', 1)[1].strip()
+        return True, cleaned.split(':', 1)[1].strip()
 
-    # spotify uri
-    if t.startswith('spotify:'):
-        parts = t.split(':')
-        if len(parts) >= 3 and parts[1] == 'artist':
-            return True, parts[2]
+    # spotify uri anywhere in the line (allow labels like "Spotify URI:")
+    m_uri = re.search(r"spotify:artist:([A-Za-z0-9]+)", cleaned, re.IGNORECASE)
+    if m_uri:
+        return True, m_uri.group(1)
 
-    # spotify url
-    if 'open.spotify.com/artist/' in t:
-        # may include query params
-        try:
-            after = t.split('open.spotify.com/artist/', 1)[1]
-            artist_id = after.split('?')[0].split('/')[0]
-            return True, artist_id
-        except Exception:
-            pass
+    # spotify url anywhere in the line
+    m_url = re.search(r"open\.spotify\.com/artist/([A-Za-z0-9]+)", cleaned, re.IGNORECASE)
+    if m_url:
+        return True, m_url.group(1)
 
     # direct-ish ID: spotify IDs are typically 22 chars base62-ish
-    if len(t) >= 20 and len(t) <= 24 and t.isalnum():
-        return True, t
+    if 20 <= len(cleaned) <= 24 and cleaned.isalnum():
+        return True, cleaned
 
     # otherwise treat as name
-    return False, t
+    return False, cleaned
 
 
 def main():
